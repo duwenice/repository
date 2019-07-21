@@ -1,0 +1,19 @@
+{
+    "editor.fontSize": 16,
+    "picgo": {
+        "path": "repositoryImage"
+      },
+      "picBed": {
+        "current": "aliyun",
+        "aliyun": {
+          "accessKeyId": "LTAI6k2iEGlpb4kL",
+          "accessKeySecret": "BZty40KkiLRcxuE7HAj9typvrCEWUy",
+          "bucket": "repositoryimage",
+          "area": "oss-cn-shangha",
+          "path": "img/",
+          "customUrl": ""
+        }
+      }
+}
+
+
