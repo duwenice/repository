@@ -1,19 +1,11 @@
 {
     "editor.fontSize": 16,
-    "picgo": {
-        "path": "repositoryImage"
-      },
-      "picBed": {
-        "current": "aliyun",
-        "aliyun": {
-          "accessKeyId": "LTAI6k2iEGlpb4kL",
-          "accessKeySecret": "BZty40KkiLRcxuE7HAj9typvrCEWUy",
-          "bucket": "repositoryimage",
-          "area": "oss-cn-shangha",
-          "path": "img/",
-          "customUrl": ""
-        }
-      }
+    "picgo.picBed.aliyun.accessKeyId": "LTAI6k2iEGlpb4kL",
+    "picgo.picBed.aliyun.accessKeySecret": "BZty40KkiLRcxuE7HAj9typvrCEWUy",
+    "picgo.picBed.aliyun.bucket": "repositoryimage",
+    "picgo.picBed.aliyun.area": "oss-cn-shanghai",
+    "picgo.picBed.aliyun.path": "img/",
+    "picgo.picBed.current": "aliyun"
 }
 
 
