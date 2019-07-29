@@ -180,5 +180,6 @@ private boolean addWorker(Runnable firstTask, boolean core) {
         }
     }
 ```
+tip：
 
 ![20190724143503.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190724143503.png)
