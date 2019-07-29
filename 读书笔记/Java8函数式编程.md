@@ -86,3 +86,12 @@ stream是使用函数式编程在集合类上进行复杂操作的工具。它�
 - flatMap
 - reduce：接收的lambda表达式的类型是BinaryOperator
   
+tip：
+
+* 使用为基本类型定制的 Lambda 表达式和 Stream，如 IntStream 可以显著提升系统性能。
+* 默认方法是指接口中定义的包含方法体的方法，方法名有 default 关键字做前缀。
+* 在一个值可能为空的建模情况下，使用 Optional 对象能替代使用 null 值。
+* 方法引用是一种引用方法的轻量级语法，形如：ClassName::methodName。 
+* 收集器可用来计算流的最终值，是 reduce 方法的模拟。 
+* Java 8 提供了收集多种容器类型的方式，同时允许用户自定义收集器。
+
