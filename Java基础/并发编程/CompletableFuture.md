@@ -1,14 +1,14 @@
-## CompletableFuture
+# CompletableFuture
 
-### 异步计算
+## 异步计算
 异步调用就是无需等待调用函数的返回结果而可以继续执行操作，异步计算说的是使用另一个线程来完成调用中的计算部分，使调用继续运行或者返回，而不需要等待计算结果。
 
-### 回调函数
+## 回调函数
 通过函数指针调用的函数，吧函数的指针作为参数传递给另一个函数，当这个指针被用为调用它所指向的函数的时候，就说这是会掉函数。回调函数是在特定的事件或者条件发生时由另外一方调用的，用于表示对该事件或者条件进行响应。
 
 定义回调函数 --> 函数实现方初始化后将函数指针传递给调用者 --> 调用者在特定的事件下调用函数
 
-### Callable和Future
+## Callable和Future
 Runnable是一个没有参数，没有返回的异步封装接口，当需要返回值的时候，就可以使用Callable了。Callable接口是一个参数化的类型，只有一个方法call()，返回值类型就是参数的类型。例如Callable<String>就表示将返回一个String类型的值。
 
 通常线程都是通过实现Runnable接口来创建，但是run()方法没有返回，因此如果需要异步计算，并且获取计算的返回结果的时候，显然是不能够的，因此Future就被设计出来了。Future的核心模式就是当异步计算的时候，马上返回一个Future实例，通过这个实例来控制该异步线程，获取执行返回结果。
@@ -34,7 +34,7 @@ FutureTask实现了Future和Runnable接口。
     }
 ```
 
-### 与Future的联系
+## 与Future的联系
 JDK5 新增的Future接口用于描述异步计算的结果，但是对于结果的获取不方便，只能通过阻塞或者轮询的方式得到任务的结果
 
 
@@ -43,7 +43,7 @@ JDK5 新增的Future接口用于描述异步计算的结果，但是对于结果
 异步行为         Future句柄
 异步回调行为     CompletableFuture句柄
 
-### CompletableFuture的API
+## CompletableFuture的API
 - 创建类型：创建CompletableFuture
    1. completedFuture
    2. runAsync

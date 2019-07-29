@@ -1,4 +1,4 @@
-## Executor框架
+# Executor框架
 > 参考 https://juejin.im/entry/59b232ee6fb9a0248d25139a
 
 创建一个线程是有代价，需要和操作系统进行交互，管理一个线程也是需要牺牲额外的性能的。因此一般不显式的创建线程，而是通过线程池来创建管理线程。Executors工具类有许多静态方法来创建线程池。Executor框架主要包括**Executor**接口，**ExecutorService**接口和**Executors**工具类。
@@ -16,7 +16,7 @@ Executor 接口只有一个方法execute,ExecutorService扩展了Executor，添�
 
 
 
-### ThreadPoolExecutor
+## ThreadPoolExecutor
 
  * <li> If fewer than corePoolSize threads are running, the Executor
  * always prefers adding a new thread
