@@ -1,5 +1,6 @@
 ## 加载配置文件 
-ResourceLoader 接口是用来加载配置文件其实现为
+
+在开发中，往往有需要去读取资源的情况出现，这些资源包括文件系统中的文件资源，网络资源，之前可以用jdk原生的URL类去读取资源，但是在Spring中提供的一个Resource接口，用来表示资源，它有许多实现类，比如UrlResource和ClassPathResource等等。既然有这么多的实现类，如果是由开发者在使用的时候来决定使用什么类的话，那么就体现不出Resource接口在这里的作用了。Spring提供了另一个接口叫ResourceLoader，用来加载资源返回对应的Resource实例。其默认实现为
 DefaultResourceLoader，核心是getResource函数,如下所示：
 ```java
 	public Resource getResource(String location) {
@@ -52,3 +53,8 @@ Resource
 		return is;
 	}
 ```
+
+## 加载指定路径下的特定类
+
+![20190805170212.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190805170212.png)
+
