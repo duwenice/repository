@@ -1,6 +1,9 @@
 ## 加载资源 
 
+
 在开发中，往往有需要去读取资源的情况出现，这些资源包括文件系统中的文件资源，网络资源，之前可以用jdk原生的URL类去读取资源，但是在Spring中提供的一个Resource接口，用来表示资源，它有许多实现类，比如UrlResource和ClassPathResource等等。
+对Resource出现的解释:
+![20190812092134.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190812092134.png)
 ![20190807092115.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190807092115.png)
 
 作为spring中所有资源的统一抽象，Resource定义了一些通用的方法，并由AbstractResource提供了默认实现。
