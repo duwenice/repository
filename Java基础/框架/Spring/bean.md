@@ -5,16 +5,12 @@ Spring核心其实是一个bean容器，什么是bean？可以简单的理解为
 public interface BeanDefinition extends AttributeAccessor, BeanMetadataElement {
 
 	/**
-	 * Scope identifier for the standard singleton scope: "singleton".
-	 * <p>Note that extended bean factories might support further scopes.
-	 * @see #setScope
+	 * bean在容器中是单例的
 	 */
 	String SCOPE_SINGLETON = ConfigurableBeanFactory.SCOPE_SINGLETON;
 
 	/**
-	 * Scope identifier for the standard prototype scope: "prototype".
-	 * <p>Note that extended bean factories might support further scopes.
-	 * @see #setScope
+	 * 多例，每次对bean的请求都会创建一个新的bean实例，试用于有状态的bean
 	 */
 	String SCOPE_PROTOTYPE = ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
@@ -264,3 +260,156 @@ public interface BeanDefinition extends AttributeAccessor, BeanMetadataElement {
 
 }
 ```
+
+## BeanDefinitionHolder
+```java
+	private final BeanDefinition beanDefinition;
+
+	private final String beanName;
+
+	@Nullable
+	private final String[] aliases;
+```
+BeanDefinitionHolder类里面主要包含三个属性，beanDefinition,beanName,aliases;从名称就可以看出，这个类主要是用来持有一个beanDefinition的，通过BeanDefinitionHolder来操作beanDefinition。
+
+## BeanRegister
+```java
+public interface BeanDefinitionRegistry extends AliasRegistry {
+
+	void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+			throws BeanDefinitionStoreException;
+
+	void removeBeanDefinition(String beanName) throws NoSuchBeanDefinitionException;
+
+	BeanDefinition getBeanDefinition(String beanName) throws NoSuchBeanDefinitionException;
+
+	boolean containsBeanDefinition(String beanName);
+
+	String[] getBeanDefinitionNames();
+
+	int getBeanDefinitionCount();
+
+	boolean isBeanNameInUse(String beanName);
+}
+```
+BeanDefinitionRegistry继承自AliasRegistry，AliasRegistry定义了beanName和alias之间的关系，而BeanDefinition则定义了beanName和beanDefintion之间的关系。
+其中registerBeanDefinition方法默认实现如下:
+```java
+@Override
+	public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+			throws BeanDefinitionStoreException {
+
+		Assert.hasText(beanName, "Bean name must not be empty");
+		Assert.notNull(beanDefinition, "BeanDefinition must not be null");
+		// 对beanDefinition进行验证
+		if (beanDefinition instanceof AbstractBeanDefinition) {
+			try {
+				((AbstractBeanDefinition) beanDefinition).validate();
+			}
+			catch (BeanDefinitionValidationException ex) {
+				throw new BeanDefinitionStoreException(beanDefinition.getResourceDescription(), beanName,
+						"Validation of bean definition failed", ex);
+			}
+		}
+
+		BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
+		if (existingDefinition != null) {
+			// 如果已经存在并且不允许覆盖，抛出异常
+			if (!isAllowBeanDefinitionOverriding()) {
+				throw new BeanDefinitionOverrideException(beanName, beanDefinition, existingDefinition);
+			}
+			// 如果用户自定义的bean可以覆盖配置中定义的bean，这两者都可以覆盖spring内部的bean，反之则不行
+			else if (existingDefinition.getRole() < beanDefinition.getRole()) {
+				// e.g. was ROLE_APPLICATION, now overriding with ROLE_SUPPORT or ROLE_INFRASTRUCTURE
+				if (logger.isInfoEnabled()) {
+					logger.info("Overriding user-defined bean definition for bean '" + beanName +
+							"' with a framework-generated bean definition: replacing [" +
+							existingDefinition + "] with [" + beanDefinition + "]");
+				}
+			}
+			// 如果已存在的bean和新的bean类型不一致，输出日志
+			else if (!beanDefinition.equals(existingDefinition)) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Overriding bean definition for bean '" + beanName +
+							"' with a different definition: replacing [" + existingDefinition +
+							"] with [" + beanDefinition + "]");
+				}
+			}
+			else {
+				if (logger.isTraceEnabled()) {
+					logger.trace("Overriding bean definition for bean '" + beanName +
+							"' with an equivalent definition: replacing [" + existingDefinition +
+							"] with [" + beanDefinition + "]");
+				}
+			}
+			// 默认是可以覆盖的
+			this.beanDefinitionMap.put(beanName, beanDefinition);
+		}
+		else {
+			// 判断工厂是否开始创建bean这个过程，如果已经开始，需要进行并发控制，因为都是注册到beanDefinitionMap里面去，可能会出现并发问题
+			if (hasBeanCreationStarted()) {
+				synchronized (this.beanDefinitionMap) {
+					this.beanDefinitionMap.put(beanName, beanDefinition);
+					List<String> updatedDefinitions = new ArrayList<>(this.beanDefinitionNames.size() + 1);
+					updatedDefinitions.addAll(this.beanDefinitionNames);
+					updatedDefinitions.add(beanName);
+					this.beanDefinitionNames = updatedDefinitions;
+					removeManualSingletonName(beanName);
+				}
+			}
+			else {
+				this.beanDefinitionMap.put(beanName, beanDefinition);
+				this.beanDefinitionNames.add(beanName);
+				removeManualSingletonName(beanName);
+			}
+			this.frozenBeanDefinitionNames = null;
+		}
+
+		if (existingDefinition != null || containsSingleton(beanName)) {
+			//  更新缓存
+			resetBeanDefinition(beanName);
+		}
+	}
+```
+从这个注册过程其实就可以看出spring bean容器的本质了，其实就是一个key值为beanName，value为BeanDefinition的map。
+registerAlias的过程其实很类似，代码如下:
+```java
+public void registerAlias(String name, String alias) {
+		Assert.hasText(name, "'name' must not be empty");
+		Assert.hasText(alias, "'alias' must not be empty");
+		synchronized (this.aliasMap) {
+			if (alias.equals(name)) {
+				// name和alias相同则remove
+				this.aliasMap.remove(alias);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Alias definition '" + alias + "' ignored since it points to same name");
+				}
+			}
+			else {
+				String registeredName = this.aliasMap.get(alias);
+				if (registeredName != null) {
+					if (registeredName.equals(name)) {
+						// An existing alias - no need to re-register
+						return;
+					}
+					if (!allowAliasOverriding()) {
+						throw new IllegalStateException("Cannot define alias '" + alias + "' for name '" +
+								name + "': It is already registered for name '" + registeredName + "'.");
+					}
+					if (logger.isDebugEnabled()) {
+						logger.debug("Overriding alias '" + alias + "' definition for registered name '" +
+								registeredName + "' with new target name '" + name + "'");
+					}
+				}
+				checkForAliasCircle(name, alias);
+				this.aliasMap.put(alias, name);
+				if (logger.isTraceEnabled()) {
+					logger.trace("Alias definition '" + alias + "' registered for name '" + name + "'");
+				}
+			}
+		}
+	}
+```
+## 一些概念
+* DTD : Document Type Definition,文档类型定义。属于xml文件中的一部分，用来验证xml文件中的格式是否正确。
+* XSD : XML Schemas Definition,xsd是针对dtd的缺陷而提出的，dtd的缺陷在于本身不是使用的xml格式，因此解析起来需要重新定义一套解析器，同时dtd相较于xsd更难于解析。xsd本省就是使用xml格式编写的，因此可以直接同一个解析器进行解析。
