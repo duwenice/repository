@@ -260,6 +260,8 @@ public interface BeanDefinition extends AttributeAccessor, BeanMetadataElement {
 
 }
 ```
+BeanDefinition中定义的规则默认由AbstractBeanDefinition实现，AbstractBeanDefinition有三个重要的子类:RootBeanDefinition，ChildBeanDefinition，GenericBeanDefinition
+
 
 ## BeanDefinitionHolder
 ```java

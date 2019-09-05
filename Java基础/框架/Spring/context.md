@@ -176,6 +176,7 @@ public interface BeanFactory {
 
 Spring 中大量使用反射，需要获取泛型的具体类型，为此专门提供了一个工具类解析泛型 - ResolvalbeType。ResolvableType 是对 Class，Field，Method 获取 Type 的抽象
 
+
 ## Context
 Spring中的Context的始祖是ApplicationContext，代码如下：
 ```java
