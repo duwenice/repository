@@ -177,6 +177,39 @@ public interface BeanFactory {
 Spring 中大量使用反射，需要获取泛型的具体类型，为此专门提供了一个工具类解析泛型 - ResolvalbeType。ResolvableType 是对 Class，Field，Method 获取 Type 的抽象
 
 
+![20190906153048.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190906153048.png)
+
+DefaultSingletonBeanRegistry中的几个map如下：
+* Map<String, Object> singletonObjects spring中的bean大部分是单例的，singletonObjects就是缓存单例对象的位置。
+* Map<String, ObjectFactory<?>> singletonFactories 
+* Map<String, Object> earlySingletonObjects
+* Set<String> registeredSingletons
+* Set<String> singletonsCurrentlyInCreation
+
+其中的一段核心代码如下：
+```java
+	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
+		// 首先从单例对象实例缓存中取
+		Object singletonObject = this.singletonObjects.get(beanName);
+		// 如果缓存中不存在并且需要取的bean正在create的过程中
+		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
+			synchronized (this.singletonObjects) {
+		
+				singletonObject = this.earlySingletonObjects.get(beanName);
+				if (singletonObject == null && allowEarlyReference) {
+					ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
+					if (singletonFactory != null) {
+						singletonObject = singletonFactory.getObject();
+						this.earlySingletonObjects.put(beanName, singletonObject);
+						this.singletonFactories.remove(beanName);
+					}
+				}
+			}
+		}
+		return singletonObject;
+	}
+```
+
 ## Context
 Spring中的Context的始祖是ApplicationContext，代码如下：
 ```java
