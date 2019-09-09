@@ -186,6 +186,48 @@ DefaultSingletonBeanRegistry中的几个map如下：
 * Set<String> registeredSingletons
 * Set<String> singletonsCurrentlyInCreation
 
+beanName其实对应的是xml文件中定义的beanId xml文件中定义的name对应的是bean AliasName
+
+bean的实例化核心代码如下:
+```java
+sharedInstance = getSingleton(beanName, () -> {
+                        try {
+                            return createBean(beanName, mbd, args);
+                        } catch (BeansException ex) {
+                            destroySingleton(beanName);
+                            throw ex;
+                        }
+```
+就是这么一行代码首先实例化bean而后将实例化后的bean获取出来。
+getSingleton传入的参数有两个，beanName和一个ObjectFactory<?>对象，其中ObjectFactory是一个典型的函数式接口，其定义如下：
+```java
+/**
+ * Defines a factory which can return an Object instance
+ * (possibly shared or independent) when invoked.
+ */
+@FunctionalInterface
+public interface ObjectFactory<T> {
+	T getObject() throws BeansException;
+}
+```
+至于createBean方法是在AbstractBeanFactory中定义，在其子类AbstractAutowireCapableBeanFactory中实现。该子类中的核心方法就是这个方法，用来创建一个实例。
+
+
+```java
+public interface FactoryBean<T> {
+	@Nullable
+	T getObject() throws Exception;
+
+	@Nullable
+	Class<?> getObjectType();
+
+	default boolean isSingleton() {
+		return true;
+	}
+}
+```
+一般情况下，Spring是通过反射机制来实现bean的实例化的，但是在某些情况下，实例化bean比较复杂，此时就通过实现FactoryBean接口来定制实例化bean的逻辑。
+
 其中的一段核心代码如下：
 ```java
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
