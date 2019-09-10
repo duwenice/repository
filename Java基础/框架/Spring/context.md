@@ -181,8 +181,8 @@ Spring 中大量使用反射，需要获取泛型的具体类型，为此专门�
 
 DefaultSingletonBeanRegistry中的几个map如下：
 * Map<String, Object> singletonObjects spring中的bean大部分是单例的，singletonObjects就是缓存单例对象的位置。
-* Map<String, ObjectFactory<?>> singletonFactories 
-* Map<String, Object> earlySingletonObjects
+* Map<String, ObjectFactory<?>> singletonFactories 用于存储在spring内部所使用的beanName->对象工厂的引用，一旦最终对象被创建(通过objectFactory.getObject())，此引用信息将删除
+* Map<String, Object> earlySingletonObjects 用于存储在创建Bean早期对创建的原始bean的一个引用，注意这里是原始bean，即使用工厂方法或构造方法创建出来的对象，一旦对象最终创建好，此引用信息将删除
 * Set<String> registeredSingletons
 * Set<String> singletonsCurrentlyInCreation
 
@@ -226,7 +226,54 @@ public interface FactoryBean<T> {
 	}
 }
 ```
-一般情况下，Spring是通过反射机制来实现bean的实例化的，但是在某些情况下，实例化bean比较复杂，此时就通过实现FactoryBean接口来定制实例化bean的逻辑。
+
+一般情况下，Spring是通过反射机制来实现bean的实例化的，但是在某些情况下，实例化bean比较复杂，此时就通过实现FactoryBean接口来定制实例化bean的逻辑（通过实现getObject方法可以在其中定制实例化bean的逻辑）。
+
+FactoryBean和ObjectFactory是bean实例化过程中非常重要的两个概念，这里说一下自己的理解：FactoryBean是spring中的一个SPI(Service Provider Interface)设计，Spring提供了定义，但是由用户自定义实现，因此FactoryBean是用来提供给用户定制怎么实例化bean的接口，接下来说ObjectFactory，这是一个典型的函数式接口，由上面实例化的核心代码可知：bean的实例化过程是通过实现ObjectFactory的函数接口来实现的，因此ObjectFactory正如其名是一个工厂方法。但是ObjectFactory还有一个重要的作用，就是在下面这两段代码中：
+```java
+
+        Object singletonObject = singletonObjects.get(beanName);
+        if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
+            synchronized (singletonObjects) {
+                singletonObject = earlySingletonObjects.get(beanName);
+                if (singletonObject == null && allowEarlyReference) {
+                    ObjectFactory<?> singletonFactory = singletonFactories.get(beanName);
+                    if (singletonFactory != null) {
+                        singletonObject = singletonFactory.getObject();
+                        earlySingletonObjects.put(beanName, singletonObject);
+                        singletonFactories.remove(beanName);
+                    }
+                }
+            }
+        }
+        return singletonObject;
+```
+上面这段代码有两个临时map：singletonFactories和earlySingletonObjects，前者是beanName到ObjectFactory的映射，后者是beanName到原始bean的映射。这里又涉及了另外一个过程，Spring在bean的实例化过程中，并不是完整的原子操作，而是先根据构造函数实例化一个原始bean，而后通过populate()这个函数进行属性的注入填充。一旦对象最终实例化成功，这两个临时map都会清空，现在开始看这段代码，主要有以下几步：
+1. 首先从缓存中获取bean，如果缓存中不存在bean并且bean正在被创建，此时就说明出现了循环依赖的问题（Bean在实例化的过程中会先加入一个正在创建的池，当创建的过程中发现自己已经在池中，就说明出现了循环依赖），接下来解决循环依赖的问题。
+2. 如果原始bean不存在，并且allowEarlyReference为true，这个属性代表的是在依赖注入的过程中，在A依赖于B的情况下，允许对A注入B的原始Bean（即一个ObjectFactory对象）。
+3. 根据beanName从singletonFactories中获取到对应的beanFactory，即原始bean。
+4. 建立从beanName到原始bean的映射。
+5. 移除beanName到beanFactory的映射。
+总结一下，这段代码的意义在于getBean的时候如果缓存中存在则返回缓存中的bean实例，如果缓存中不存在，并且正在被创建，说明发生了循环依赖，此时原始bean存在，会返回原始bean。
+另一段代码如下：
+```java
+        boolean earlySingletonExposure =
+            (mbd.isSingleton() && allowCircularReferences && isSingletonCurrentlyInCreation(beanName));
+        if (earlySingletonExposure) {
+            if (logger.isTraceEnabled()) {
+                logger.trace(
+                    "Eagerly caching bean '" + beanName + "' to allow for resolving potential circular references");
+            }
+            addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
+        }
+```
+这段代码的位置在于调用构造函数得到原始bean和属性填充的中间，说的是在bean实例化的过程中，如果是单例对象，允许循环依赖并且此时这个bean正在被创建，其实就是出现了循环依赖的问题，此时会中断属性填充，将原始bean加入singletonFactories这个临时map。因此可以得到以下过程（发生循环依赖）：
+![20190910194626.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190910194626.png)
+又因为是将正在实例化的原始beanA提供给B注入，因此当beanA属性填充完成之后，beanB所依赖的就是完整的beanA（同一个地址的beanA）.
+
+
+tip:
+* 如果在依赖注入的过程中采取的是构造器注入的方式，这种方式造成的循环依赖是没法解决的，只能抛出异常。
 
 其中的一段核心代码如下：
 ```java
