@@ -188,6 +188,7 @@ DefaultSingletonBeanRegistry中的几个map如下：
 
 beanName其实对应的是xml文件中定义的beanId xml文件中定义的name对应的是bean AliasName
 
+### bean的实例化
 bean的实例化核心代码如下:
 ```java
 sharedInstance = getSingleton(beanName, () -> {
@@ -229,9 +230,9 @@ public interface FactoryBean<T> {
 
 一般情况下，Spring是通过反射机制来实现bean的实例化的，但是在某些情况下，实例化bean比较复杂，此时就通过实现FactoryBean接口来定制实例化bean的逻辑（通过实现getObject方法可以在其中定制实例化bean的逻辑）。
 
+### FactoryBean和ObjectFactory的理解
 FactoryBean和ObjectFactory是bean实例化过程中非常重要的两个概念，这里说一下自己的理解：FactoryBean是spring中的一个SPI(Service Provider Interface)设计，Spring提供了定义，但是由用户自定义实现，因此FactoryBean是用来提供给用户定制怎么实例化bean的接口，接下来说ObjectFactory，这是一个典型的函数式接口，由上面实例化的核心代码可知：bean的实例化过程是通过实现ObjectFactory的函数接口来实现的，因此ObjectFactory正如其名是一个工厂方法。但是ObjectFactory还有一个重要的作用，就是在下面这两段代码中：
 ```java
-
         Object singletonObject = singletonObjects.get(beanName);
         if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
             synchronized (singletonObjects) {
@@ -275,29 +276,196 @@ FactoryBean和ObjectFactory是bean实例化过程中非常重要的两个概念�
 tip:
 * 如果在依赖注入的过程中采取的是构造器注入的方式，这种方式造成的循环依赖是没法解决的，只能抛出异常。
 
-其中的一段核心代码如下：
+### bean的属性填充
+bean的属性填充是通过下面这一行代码：
 ```java
-	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
-		// 首先从单例对象实例缓存中取
-		Object singletonObject = this.singletonObjects.get(beanName);
-		// 如果缓存中不存在并且需要取的bean正在create的过程中
-		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
-			synchronized (this.singletonObjects) {
-		
-				singletonObject = this.earlySingletonObjects.get(beanName);
-				if (singletonObject == null && allowEarlyReference) {
-					ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
-					if (singletonFactory != null) {
-						singletonObject = singletonFactory.getObject();
-						this.earlySingletonObjects.put(beanName, singletonObject);
-						this.singletonFactories.remove(beanName);
-					}
-				}
-			}
-		}
-		return singletonObject;
-	}
+        populateBean(beanName, mbd, instanceWrapper);
 ```
+属性填充的具体代码如下:
+```java
+        PropertyValues pvs = (mbd.hasPropertyValues() ? mbd.getPropertyValues() : null);
+
+        if (mbd.getResolvedAutowireMode() == AUTOWIRE_BY_NAME || mbd.getResolvedAutowireMode() == AUTOWIRE_BY_TYPE) {
+            MutablePropertyValues newPvs = new MutablePropertyValues(pvs);
+            // Add property values based on autowire by name if applicable.
+            if (mbd.getResolvedAutowireMode() == AUTOWIRE_BY_NAME) {
+                autowireByName(beanName, mbd, bw, newPvs);
+            }
+            // Add property values based on autowire by type if applicable.
+            if (mbd.getResolvedAutowireMode() == AUTOWIRE_BY_TYPE) {
+                autowireByType(beanName, mbd, bw, newPvs);
+            }
+            pvs = newPvs;
+        }
+		……
+		if (needsDepCheck) {
+            if (filteredPds == null) {
+                filteredPds = filterPropertyDescriptorsForDependencyCheck(bw, mbd.allowCaching);
+            }
+            checkDependencies(beanName, mbd, filteredPds, pvs);
+        }
+
+        if (pvs != null) {
+            applyPropertyValues(beanName, mbd, bw, pvs);
+        }
+```
+可以看到上面这段代码说的是获取属性值pvs，检查属性的依赖，然后填充pvs的过程。首先现在获取属性值pvs的模式有以下几种:
+```java
+public static final int AUTOWIRE_NO = AutowireCapableBeanFactory.AUTOWIRE_NO;
+
+public static final int AUTOWIRE_BY_NAME =
+	AutowireCapableBeanFactory.AUTOWIRE_BY_NAME;
+
+public static final int AUTOWIRE_BY_TYPE = AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE;
+
+public static final int AUTOWIRE_CONSTRUCTOR = AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR;
+```
+从名字就能看出来，分别是不进行注入填充，根据名称进行填充，根据类型进行填充，使用构造器进行填充。
+其中第二个和第三个对应的就是我们常用的注解@Autowired和@Resource，那我们接下来看看它们分别怎么实现的。
+
+@Autowired的实现如下：
+```java
+    protected void autowireByName(String beanName, AbstractBeanDefinition mbd, BeanWrapper bw,
+        MutablePropertyValues pvs) {
+
+        String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
+        for (String propertyName : propertyNames) {
+            if (containsBean(propertyName)) {
+                Object bean = getBean(propertyName);
+                pvs.add(propertyName, bean);
+                registerDependentBean(propertyName, beanName);
+				……
+                }
+            } else {
+				……
+            }
+        }
+    }
+```
+很简单的逻辑，根据属性值名称对应的beanName去bean容器中取，然后与本实例关联。
+
+@Resource的实现如下:
+```java
+    protected void autowireByType(String beanName, AbstractBeanDefinition mbd, BeanWrapper bw,
+        MutablePropertyValues pvs) {
+
+        TypeConverter converter = getCustomTypeConverter();
+        if (converter == null) {
+            converter = bw;
+        }
+
+        Set<String> autowiredBeanNames = new LinkedHashSet<>(4);
+        String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
+        for (String propertyName : propertyNames) {
+            try {
+                PropertyDescriptor pd = bw.getPropertyDescriptor(propertyName);
+                if (Object.class != pd.getPropertyType()) {
+                    MethodParameter methodParam = BeanUtils.getWriteMethodParameter(pd);
+                    boolean eager = !PriorityOrdered.class.isInstance(bw.getWrappedInstance());
+                    DependencyDescriptor desc = new AutowireByTypeDependencyDescriptor(methodParam, eager);
+                    Object autowiredArgument = resolveDependency(desc, beanName, autowiredBeanNames, converter);
+                    if (autowiredArgument != null) {
+                        pvs.add(propertyName, autowiredArgument);
+                    }
+                    for (String autowiredBeanName : autowiredBeanNames) {
+                        registerDependentBean(autowiredBeanName, beanName);
+						……
+                    }
+                    autowiredBeanNames.clear();
+                }
+            } catch (BeansException ex) {
+                throw new UnsatisfiedDependencyException(mbd.getResourceDescription(), beanName, propertyName, ex);
+            }
+        }
+    }
+```
+根据type注入的时候也是遍历各个属性名，然后根据每个属性的类型的描述符来进行判断注入。
+接下来看具体得到了pvs之后，怎么将pvs填充到本实例的过程:
+```java
+    protected void applyPropertyValues(String beanName, BeanDefinition mbd, BeanWrapper bw, PropertyValues pvs) {
+        if (pvs.isEmpty()) {
+            return;
+        }
+
+        if (System.getSecurityManager() != null && bw instanceof BeanWrapperImpl) {
+            ((BeanWrapperImpl)bw).setSecurityContext(getAccessControlContext());
+        }
+
+        MutablePropertyValues mpvs = null;
+        List<PropertyValue> original;
+
+        if (pvs instanceof MutablePropertyValues) {
+            mpvs = (MutablePropertyValues)pvs;
+            if (mpvs.isConverted()) {
+                try {
+                    bw.setPropertyValues(mpvs);
+                    return;
+                } catch (BeansException ex) {
+                    throw new BeanCreationException(mbd.getResourceDescription(), beanName,
+                        "Error setting property values", ex);
+                }
+            }
+            original = mpvs.getPropertyValueList();
+        } else {
+            original = Arrays.asList(pvs.getPropertyValues());
+        }
+
+        TypeConverter converter = getCustomTypeConverter();
+        if (converter == null) {
+            converter = bw;
+        }
+        BeanDefinitionValueResolver valueResolver = new BeanDefinitionValueResolver(this, beanName, mbd, converter);
+
+        List<PropertyValue> deepCopy = new ArrayList<>(original.size());
+        boolean resolveNecessary = false;
+        for (PropertyValue pv : original) {
+            if (pv.isConverted()) {
+                deepCopy.add(pv);
+            } else {
+                String propertyName = pv.getName();
+                Object originalValue = pv.getValue();
+                Object resolvedValue = valueResolver.resolveValueIfNecessary(pv, originalValue);
+                Object convertedValue = resolvedValue;
+                boolean convertible = bw.isWritableProperty(propertyName)
+                    && !PropertyAccessorUtils.isNestedOrIndexedProperty(propertyName);
+                if (convertible) {
+                    convertedValue = convertForProperty(resolvedValue, propertyName, bw, converter);
+                }
+                if (resolvedValue == originalValue) {
+                    if (convertible) {
+                        pv.setConvertedValue(convertedValue);
+                    }
+                    deepCopy.add(pv);
+                } else if (convertible && originalValue instanceof TypedStringValue
+                    && !((TypedStringValue)originalValue).isDynamic()
+                    && !(convertedValue instanceof Collection || ObjectUtils.isArray(convertedValue))) {
+                    pv.setConvertedValue(convertedValue);
+                    deepCopy.add(pv);
+                } else {
+                    resolveNecessary = true;
+                    deepCopy.add(new PropertyValue(pv, convertedValue));
+                }
+            }
+        }
+        if (mpvs != null && !resolveNecessary) {
+            mpvs.setConverted();
+        }
+
+        try {
+            bw.setPropertyValues(new MutablePropertyValues(deepCopy));
+        } catch (BeansException ex) {
+            throw new BeanCreationException(mbd.getResourceDescription(), beanName, "Error setting property values",
+                ex);
+        }
+    }
+```
+
+## 初始化（init）Bean
+```java
+        populateBean(beanName, mbd, instanceWrapper);
+        exposedObject = initializeBean(beanName, exposedObject, mbd);
+```
+可以看到，在进行属性填充之后，紧接着就是对Bean的初始化，
 
 ## Context
 Spring中的Context的始祖是ApplicationContext，代码如下：
