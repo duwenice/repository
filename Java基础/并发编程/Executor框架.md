@@ -17,7 +17,8 @@ Executor 接口只有一个方法execute,ExecutorService扩展了Executor，添�
 
 
 ## ThreadPoolExecutor
-
+```java
+/**
  * <li> If fewer than corePoolSize threads are running, the Executor
  * always prefers adding a new thread
  * rather than queuing.</li>
@@ -29,7 +30,8 @@ Executor 接口只有一个方法execute,ExecutorService扩展了Executor，添�
  * <li> If a request cannot be queued, a new thread is created unless
  * this would exceed maximumPoolSize, in which case, the task will be
  * rejected.</li>
- 
+ */
+ ```
  当新的任务被提交的时候，首先判断线程池中活跃线程的数目，如果小于corePoolSize，即使其他线程是空闲的，也会新建一个线程去执行该任务；如果大于corePoolSize但是小于maximumPoolSize，线程池优先将任务加入工作队列；如果队列已满，线程数大于maximumPoolSize，线程池会采用相应的拒绝策略拒绝这个任务。
 
 创建一个新的线程池需要的几个核心参数：
