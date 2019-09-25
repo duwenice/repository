@@ -465,7 +465,41 @@ public static final int AUTOWIRE_CONSTRUCTOR = AutowireCapableBeanFactory.AUTOWI
         populateBean(beanName, mbd, instanceWrapper);
         exposedObject = initializeBean(beanName, exposedObject, mbd);
 ```
-可以看到，在进行属性填充之后，紧接着就是对Bean的初始化，
+可以看到，在进行属性填充之后，紧接着就是对Bean的初始化。
+```java
+    protected Object initializeBean(final String beanName, final Object bean, @Nullable RootBeanDefinition mbd) {
+        if (System.getSecurityManager() != null) {
+            AccessController.doPrivileged((PrivilegedAction<Object>)() -> {
+                invokeAwareMethods(beanName, bean);
+                return null;
+            }, getAccessControlContext());
+        } else {
+            invokeAwareMethods(beanName, bean);
+        }
+
+        Object wrappedBean = bean;
+        if (mbd == null || !mbd.isSynthetic()) {
+            wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
+        }
+
+        try {
+            invokeInitMethods(beanName, wrappedBean, mbd);
+        } catch (Throwable ex) {
+            throw new BeanCreationException((mbd != null ? mbd.getResourceDescription() : null), beanName,
+                "Invocation of init method failed", ex);
+        }
+        if (mbd == null || !mbd.isSynthetic()) {
+            wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
+        }
+
+        return wrappedBean;
+    }
+```
+大概分为以下几步:
+* 调用相应的Aware接口方法
+* 调用相应的BeanPostProcessor的postProcessBeforeInitialization方法
+* 调用初始化方法
+* 调用相应的BeanPostProcessor的postProcessAfterInitialization方法
 
 ## Context
 Spring中的Context的始祖是ApplicationContext，代码如下：
