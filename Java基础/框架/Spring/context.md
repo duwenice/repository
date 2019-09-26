@@ -460,7 +460,7 @@ public static final int AUTOWIRE_CONSTRUCTOR = AutowireCapableBeanFactory.AUTOWI
     }
 ```
 
-## 初始化（init）Bean
+### 初始化（init）Bean
 ```java
         populateBean(beanName, mbd, instanceWrapper);
         exposedObject = initializeBean(beanName, exposedObject, mbd);
@@ -500,6 +500,23 @@ public static final int AUTOWIRE_CONSTRUCTOR = AutowireCapableBeanFactory.AUTOWI
 * 调用相应的BeanPostProcessor的postProcessBeforeInitialization方法
 * 调用初始化方法
 * 调用相应的BeanPostProcessor的postProcessAfterInitialization方法
+
+### BeanPostProcessor的使用
+BeanPostProcessor从名字上来说，是bean的后置处理器，主要有两个接口:
+```java
+public interface BeanPostProcessor {
+	@Nullable
+	default Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		return bean;
+	}
+
+	@Nullable
+	default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+		return bean;
+	}
+}
+```
+BeanPostProcessor的使用时机是在对bean进行属性填充之后，围绕着bean的初始化进行的两个操作。
 
 ## Context
 Spring中的Context的始祖是ApplicationContext，代码如下：
