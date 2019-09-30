@@ -1,26 +1,5 @@
-# Spring的入口类
+# Spring Bean容器
 
-![20190903154859.png](https://repositoryimage.oss-cn-shanghai.aliyuncs.com/img/20190903154859.png)
-
-WebApplicationInitializer接口定义了Spring的入口方法:onStartup(ServletContext servletContext),AbstractContextLoaderInitializer默认实现了该方法，代码如下:
-```java
-	public void onStartup(ServletContext servletContext) throws ServletException {
-		registerContextLoaderListener(servletContext);
-	}
-
-    protected void registerContextLoaderListener(ServletContext servletContext) {
-		WebApplicationContext rootAppContext = createRootApplicationContext();
-		if (rootAppContext != null) {
-			ContextLoaderListener listener = new ContextLoaderListener(rootAppContext);
-			listener.setContextInitializers(getRootApplicationContextInitializers());
-			servletContext.addListener(listener);
-		}
-		else {
-			logger.debug("No ContextLoaderListener registered, as " +
-					"createRootApplicationContext() did not return an application context");
-		}
-	}
-```
 Spring的核心功能其实就是对于bean对象的创建管理，可以把bean类比于手机，制造生产手机的地方是工厂，那么创建管理bean的场所就是容器。spring中的容器大致可以分为两类，一种是BeanFactory，只提供了容器的最基本功能，创建管理对象，对象的依赖注入等；另外一种就是面向企业的应用上下文了，在基础功能之上还可以解析配置等企业级的功能。
 
 ## BeanFactory
@@ -214,6 +193,9 @@ public interface ObjectFactory<T> {
 至于createBean方法是在AbstractBeanFactory中定义，在其子类AbstractAutowireCapableBeanFactory中实现。该子类中的核心方法就是这个方法，用来创建一个实例。
 
 
+### FactoryBean和ObjectFactory的理解
+FactoryBean和ObjectFactory是bean实例化过程中非常重要的两个概念，这里说一下自己的理解：FactoryBean是spring中的一个SPI(Service Provider Interface)设计，Spring提供了定义，但是由用户自定义实现，因此FactoryBean是用来提供给用户定制怎么实例化bean的接口，一般情况下，Spring是通过反射机制来实现bean的实例化的，但是在某些情况下，实例化bean比较复杂，此时就通过实现FactoryBean接口来定制实例化bean的逻辑（通过实现getObject方法可以在其中定制实例化bean的逻辑）。
+
 ```java
 public interface FactoryBean<T> {
 	@Nullable
@@ -228,10 +210,7 @@ public interface FactoryBean<T> {
 }
 ```
 
-一般情况下，Spring是通过反射机制来实现bean的实例化的，但是在某些情况下，实例化bean比较复杂，此时就通过实现FactoryBean接口来定制实例化bean的逻辑（通过实现getObject方法可以在其中定制实例化bean的逻辑）。
-
-### FactoryBean和ObjectFactory的理解
-FactoryBean和ObjectFactory是bean实例化过程中非常重要的两个概念，这里说一下自己的理解：FactoryBean是spring中的一个SPI(Service Provider Interface)设计，Spring提供了定义，但是由用户自定义实现，因此FactoryBean是用来提供给用户定制怎么实例化bean的接口，接下来说ObjectFactory，这是一个典型的函数式接口，由上面实例化的核心代码可知：bean的实例化过程是通过实现ObjectFactory的函数接口来实现的，因此ObjectFactory正如其名是一个工厂方法。但是ObjectFactory还有一个重要的作用，就是在下面这两段代码中：
+接下来说ObjectFactory，这是一个典型的函数式接口，由上面实例化的核心代码可知：bean的实例化过程是通过实现ObjectFactory的函数接口来实现的，因此ObjectFactory正如其名是一个工厂方法。但是ObjectFactory还有一个重要的作用，就是在下面这两段代码中：
 ```java
         Object singletonObject = singletonObjects.get(beanName);
         if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
@@ -255,6 +234,8 @@ FactoryBean和ObjectFactory是bean实例化过程中非常重要的两个概念�
 3. 根据beanName从singletonFactories中获取到对应的beanFactory，即原始bean。
 4. 建立从beanName到原始bean的映射。
 5. 移除beanName到beanFactory的映射。
+
+
 总结一下，这段代码的意义在于getBean的时候如果缓存中存在则返回缓存中的bean实例，如果缓存中不存在，并且正在被创建，说明发生了循环依赖，此时原始bean存在，会返回原始bean。
 另一段代码如下：
 ```java
@@ -539,3 +520,107 @@ public interface ApplicationContext extends EnvironmentCapable, ListableBeanFact
 	AutowireCapableBeanFactory getAutowireCapableBeanFactory() throws IllegalStateException;
 }
 ```
+从ApplicationContext的继承关系就能看出其也是一个BeanFactory，所以BeanFactory有的功能它都具备，除此之外，ApplicationContext还继承了EnvironmentCapable(获取环境配置),MessageSource(Spring的国际化)，ApplicationEventPublisher(Spring中事件驱动模型的发布者),ResourcePatternResolver(ResourceLoader的扩展)。从名称上来看，ApplicationContext，应用上下文，也就是一个应用所处的环境，所以ApplicationContext里面定义了id,name，启动时间等。
+
+接下来看它的一个子接口，ConfigurableApplicationContext。
+```java
+public interface ConfigurableApplicationContext extends ApplicationContext, Lifecycle, Closeable {
+    String CONFIG_LOCATION_DELIMITERS = ",; \t\n";
+    String CONVERSION_SERVICE_BEAN_NAME = "conversionService";
+    String LOAD_TIME_WEAVER_BEAN_NAME = "loadTimeWeaver";
+    String ENVIRONMENT_BEAN_NAME = "environment";
+    String SYSTEM_PROPERTIES_BEAN_NAME = "systemProperties";
+    String SYSTEM_ENVIRONMENT_BEAN_NAME = "systemEnvironment";
+    void setId(String id);
+    void setParent(@Nullable ApplicationContext parent);
+    @Override
+    ConfigurableEnvironment getEnvironment();
+    void setEnvironment(ConfigurableEnvironment environment);
+    void addBeanFactoryPostProcessor(BeanFactoryPostProcessor postProcessor);
+    void addApplicationListener(ApplicationListener<?> listener);
+    void addProtocolResolver(ProtocolResolver resolver);
+    void refresh() throws BeansException, IllegalStateException;
+    void registerShutdownHook();
+    @Override
+    void close();
+    boolean isActive();
+    ConfigurableListableBeanFactory getBeanFactory() throws IllegalStateException;
+}
+```
+
+可以看出ConfigurableApplicationContext另外继承了Lifecycle，Lifecycle接口定义了对象的生命周期。任何被Spring容器管理的对象都可以实现该接口，在ApplicationContext初始化的时候会调用LifecycleProcessor这个处理器来处理所有实现了Lifecycle的对象。
+
+接下来看ConfigurableApplicationContext的抽象实现，AbstractApplicationContext。其中的核心方法是refresh()方法，代码如下:
+```java
+    /**
+     * Spring ApplicationContext的启动方法
+     */
+    @Override
+    public void refresh() throws BeansException, IllegalStateException {
+        synchronized (startupShutdownMonitor) {
+            // Prepare this context for refreshing.
+            prepareRefresh();
+
+            // Tell the subclass to refresh the internal bean factory.
+            ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+
+            // Prepare the bean factory for use in this context.
+            prepareBeanFactory(beanFactory);
+
+            try {
+                // Allows post-processing of the bean factory in context subclasses.
+                postProcessBeanFactory(beanFactory);
+
+                // Invoke factory processors registered as beans in the context.
+                invokeBeanFactoryPostProcessors(beanFactory);
+
+                // Register bean processors that intercept bean creation.
+                registerBeanPostProcessors(beanFactory);
+
+                // Initialize message source for this context.
+                initMessageSource();
+
+                // Initialize event multicaster for this context.
+                initApplicationEventMulticaster();
+
+                // Initialize other special beans in specific context subclasses.
+                onRefresh();
+
+                // Check for listener beans and register them.
+                registerListeners();
+
+                // Instantiate all remaining (non-lazy-init) singletons.
+                finishBeanFactoryInitialization(beanFactory);
+
+                // Last step: publish corresponding event.
+                finishRefresh();
+            }
+
+            catch (BeansException ex) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn(
+                        "Exception encountered during context initialization - " + "cancelling refresh attempt: " + ex);
+                }
+
+                // Destroy already created singletons to avoid dangling resources.
+                destroyBeans();
+
+                // Reset 'active' flag.
+                cancelRefresh(ex);
+
+                // Propagate exception to caller.
+                throw ex;
+            }
+
+            finally {
+                // Reset common introspection caches in Spring's core, since we
+                // might not ever need metadata for singleton beans anymore...
+                resetCommonCaches();
+            }
+        }
+    }
+```
+
+这一套步骤下来让我想到了模板方法，固定步骤顺序，大部分相同的步骤在抽象基类中实现了。那来看一下，启动过程中需要有哪些步骤:
+
+1. 环境准备，通过 
