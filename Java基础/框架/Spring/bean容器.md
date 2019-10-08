@@ -623,4 +623,18 @@ public interface ConfigurableApplicationContext extends ApplicationContext, Life
 
 这一套步骤下来让我想到了模板方法，固定步骤顺序，大部分相同的步骤在抽象基类中实现了。那来看一下，启动过程中需要有哪些步骤:
 
-1. 环境准备，通过 
+1. 环境准备，主要是一些环境的验证。
+2. 获取beanFactory。
+3. 给获取到的beanFactory设置属性。
+4. 设置beanFactory的后置处理器(子类覆盖实现)。
+5. 注册beanFactory的后置处理器并且调用已注册的后置处理器。
+6. 注册bean的后置处理器。
+7. 国际化处理(编码)。
+8. 初始化事件广播器(ApplicationEventMulticaster)。
+9. 初始化一些特殊的bean(由子类实现)。
+10. 初始化事件监听者，并且对监听者进行注册。
+11. 实例化所有非惰性加载的单例实例。
+12. 调用LifecycleProcessor的onRefresh方法，以及对监听者发布事件。
+
+## BeanFactoryPostProcessor和BeanPostProcessor
+这两个是Spring中很重要的两个后置处理器，用于实现自定义处理的功能，前者是在bean实例化之前对beanFactory的元数据进行自定义处理的接口，后者是bean实例化过程中属性填充之后bean初始化之前或者之后的自定义处理接口。
