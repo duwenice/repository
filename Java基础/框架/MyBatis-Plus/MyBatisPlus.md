@@ -1,0 +1,1 @@
+mapper.xml的namespace属性对应于某个接口，应用程序通过接口访问mybatis时，mybatis会为这个接口生成一个代理对象，这个对象就叫做mapper对象，在生成代理前mybatis会校验接口是否已注册，即将namespace属性对应的接口类型存入本地缓存中。
