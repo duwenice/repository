@@ -45,7 +45,7 @@ g标记对应的是字符串类型的列表（[“this”, “is”, “a”, �
 
 3.练熟测试驱动开发的节奏
 
-## 任务拆分
+## 第一次任务拆分
 * schema 
     - 输入：字符串
     - 过程：解析
@@ -58,6 +58,20 @@ g标记对应的是字符串类型的列表（[“this”, “is”, “a”, �
     - 输入：schema和argumentTxt
     - 过程：匹配
     - 输出：value list
+
+## 第二次任务拆分
+* parse
+    - 输入: schemaTxt(由flag和type组成)和commandTxt(由flag和rawValue组成)
+    - 过程: 根据schemaTxt得到schema对象,根据commandTxt得到command对象,根据schema对象返回的type对command对象的rawValue进行转换
+    - 输出: 把commandTxt中的rawValue转化成对应type输出
+* schema
+    - 输入: schemaTxt
+    - 过程: 切分字符串,存入map
+    - 输出: 以flag为key,type为value的map
+* command
+    - 输入: commandTxt
+    - 过程: 切分字符串,存入map
+    - 输出: 以flag为key,rawValue为value的map
 
   
 
