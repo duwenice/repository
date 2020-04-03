@@ -9,3 +9,4 @@
 * SequenceDiagram 时序图绘制工具
 * Translation 翻译插件
 * Key promoter 快捷键提示
+* GsonFormat json转entity
