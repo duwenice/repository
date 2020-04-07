@@ -32,5 +32,5 @@ mybatis 3.5.0
 ```
 
 解决方案:
-1. 降低版本到mybatis 3.5.0
+1. 降低版本到mybatis 3.5.0 或者升级
 2. 缩小路径范围:mybatis.type-aliases-package: com.dw.**.model
