@@ -5,7 +5,8 @@
     "picgo.picBed.aliyun.bucket": "repositoryimage",
     "picgo.picBed.aliyun.area": "oss-cn-shanghai",
     "picgo.picBed.aliyun.path": "img/",
-    "picgo.picBed.current": "aliyun"
+    "picgo.picBed.current": "aliyun",
+    "python.formatting.provider": "yapf"
 }
 
 
