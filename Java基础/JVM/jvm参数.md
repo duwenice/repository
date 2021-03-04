@@ -1,0 +1,28 @@
+-Xms7000m  堆初始化大小(可以设置与Xmx一致，避免gc后重新分配内存)
+-Xmx7000m  堆最大空间
+-Xmn3500m  年轻代大小
+-XX:PermSize=96m 永久代最小空间
+-XX:MaxPermSize=256m 永久代最大空间
+-XX:-UseAdaptiveSizePolicy 设置自适应年轻代大小和eden和survivior比例
+-XX:MaxTenuringThreshold=15 自动调节对象晋升到老年代阈值的最大值(不可能年龄达到了该值还没有晋升到老年代)
+-XX:+DisableExplicitGC 关闭System.gc()
+-XX:+UseConcMarkSweepGC 使用ParNew & CMS的组合
+-XX:+CMSParallelRemarkEnabled 降低CMS标记停顿
+-XX:+UseCMSCompactAtFullCollection 在full gc的时候压缩内存，消除碎片
+-XX:+UseFastAccessorMethods 
+-XX:+UseCMSInitiatingOccupancyOnly 
+-XX:+HeapDumpOnOutOfMemoryError 
+-Djava.awt.headless=true 
+-Djava.net.preferIPv4Stack=true 
+-XX:+PrintCodeCache 
+-XX:+PrintGCDateStamps -verbose:gc 
+-XX:-UseBiasedLocking 
+-XX:-UseCounterDecay 
+-XX:AutoBoxCacheMax=20000 包装类缓存
+-XX:+AlwaysPreTouch 
+-XX:MetaspaceSize=128m 
+-XX:MaxMetaspaceSize=512m 
+-XX:ReservedCodeCacheSize=240M 
+-XX:MaxDirectMemorySize=1024m 
+
+https://wangkang007.gitbooks.io/jvm/content/jvmcan_shu_xiang_jie.html
